@@ -1,0 +1,29 @@
+# docker-compose.yaml
+version: '3.3'
+
+services:
+  sqlite3:
+    container_name: sqlite3_container
+    image: nouchka/sqlite3:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./db:/root/db/
+    ports:
+      - 9000:9000 # expose ports - HOST:CONTAINER
+    restart: unless-stopped
+
+  sqlitebrowser:
+    depends_on:
+      - sqlite3
+    container_name: sqlitebrowser
+    image: lscr.io/linuxserver/sqlitebrowser:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config:/config
+    ports:
+      - 3000:3000
+    restart: unless-stopped
