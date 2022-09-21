@@ -3,6 +3,7 @@ package session
 import (
 	"database/sql"
 	"fmt"
+	"github.com/869413421/orm/clause"
 	"github.com/869413421/orm/dialect"
 	"github.com/869413421/orm/log"
 	"github.com/869413421/orm/schema"
@@ -16,6 +17,7 @@ type Session struct {
 	sqlVars  []interface{}
 	dialect  dialect.Dialect
 	refTable *schema.Schema
+	clause   clause.Clause
 }
 
 func New(db *sql.DB, dialect dialect.Dialect) *Session {
@@ -71,6 +73,7 @@ func (s *Session) HasTable() bool {
 func (s *Session) Clear() {
 	s.sql.Reset()
 	s.sqlVars = nil
+	s.clause = clause.Clause{}
 }
 
 // DB 获取sql连接

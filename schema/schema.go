@@ -56,3 +56,13 @@ func Parse(dest interface{}, d dialect.Dialect) *Schema {
 
 	return schema
 }
+
+// RecordValues 获取字段的所有值
+func (s *Schema) RecordValues(dest interface{}) []interface{} {
+	destValue := reflect.Indirect(reflect.ValueOf(dest))
+	var fieldValues []interface{}
+	for _, field := range s.Fields {
+		fieldValues = append(fieldValues, destValue.FieldByName(field.Name).Interface())
+	}
+	return fieldValues
+}
