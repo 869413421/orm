@@ -11,6 +11,7 @@ func (s *Session) Insert(values ...interface{}) (int64, error) {
 	// 1.生成insert语句已经返回所有值
 	recordValues := make([]interface{}, 0)
 	for _, value := range values {
+		s.CallMethod(AfterInsert, value)
 		table := s.Model(value).RefTable()
 		s.clause.Set(clause.INSERT, table.TableName, table.FieldNames)
 		recordValues = append(recordValues, table.RecordValues(value))
@@ -62,6 +63,7 @@ func (s *Session) Find(values interface{}) error {
 			return err
 		}
 
+		s.CallMethod(AfterQuery, dest.Addr().Interface())
 		// 5.4 将实例添加到切片中
 		destSlice.Set(reflect.Append(destSlice, dest))
 	}
