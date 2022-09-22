@@ -13,6 +13,7 @@ import (
 
 type Session struct {
 	db       *sql.DB
+	tx       *sql.Tx
 	sql      strings.Builder
 	sqlVars  []interface{}
 	dialect  dialect.Dialect
@@ -20,8 +21,32 @@ type Session struct {
 	clause   clause.Clause
 }
 
+var _ CommonDB = (*sql.DB)(nil)
+var _ CommonDB = (*sql.Tx)(nil)
+
+type CommonDB interface {
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
 func New(db *sql.DB, dialect dialect.Dialect) *Session {
 	return &Session{db: db, dialect: dialect}
+}
+
+// Clear 清空sql字符串和参数
+func (s *Session) Clear() {
+	s.sql.Reset()
+	s.sqlVars = nil
+	s.clause = clause.Clause{}
+}
+
+// DB 获取sql连接,当TX不为空时使用tx执行
+func (s *Session) DB() CommonDB {
+	if s.tx != nil {
+		return s.tx
+	}
+	return s.db
 }
 
 // Model 设置会话模型
@@ -67,18 +92,6 @@ func (s *Session) HasTable() bool {
 	var temp string
 	_ = row.Scan(&temp)
 	return temp == s.refTable.TableName
-}
-
-// Clear 清空sql字符串和参数
-func (s *Session) Clear() {
-	s.sql.Reset()
-	s.sqlVars = nil
-	s.clause = clause.Clause{}
-}
-
-// DB 获取sql连接
-func (s *Session) DB() *sql.DB {
-	return s.db
 }
 
 // Raw 写入SQL和参数
