@@ -1,6 +1,7 @@
 package session
 
 import (
+	"errors"
 	"github.com/869413421/orm/clause"
 	"reflect"
 )
@@ -26,6 +27,7 @@ func (s *Session) Insert(values ...interface{}) (int64, error) {
 	return result.RowsAffected()
 }
 
+// Find 查找
 func (s *Session) Find(values interface{}) error {
 	// 1.获取到反射对象
 	destSlice := reflect.Indirect(reflect.ValueOf(values))
@@ -65,4 +67,86 @@ func (s *Session) Find(values interface{}) error {
 	}
 
 	return rows.Close()
+}
+
+// Update support map[string]interface{}
+// also support kv list: "Name", "Tom", "Age", 18, ....
+func (s *Session) Update(kv ...interface{}) (int64, error) {
+	// 1.检查入参是否为字典，如果不是转换为字典
+	m, ok := kv[0].(map[string]interface{})
+	if !ok {
+		m = make(map[string]interface{})
+		for i := 0; i < len(kv); i += 2 {
+			m[kv[i].(string)] = kv[i+1]
+		}
+	}
+	s.clause.Set(clause.UPDATE, s.refTable.TableName, m)
+	sql, vars := s.clause.Build(clause.UPDATE, clause.WHERE)
+	result, err := s.Raw(sql, vars...).Exec()
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
+// Delete  删除方法
+func (s *Session) Delete() (int64, error) {
+	s.clause.Set(clause.DELETE, s.refTable.TableName)
+	sql, vars := s.clause.Build(clause.DELETE, clause.WHERE)
+	result, err := s.Raw(sql, vars...).Exec()
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
+// Count  统计count
+func (s *Session) Count() (int64, error) {
+	s.clause.Set(clause.COUNT, s.refTable.TableName)
+	sql, vars := s.clause.Build(clause.COUNT, clause.WHERE)
+	row := s.Raw(sql, vars...).QueryRow()
+	var tmp int64
+
+	err := row.Scan(&tmp)
+	if err != nil {
+		return 0, err
+	}
+
+	return tmp, err
+}
+
+// Limit limit
+func (s *Session) Limit(num int) *Session {
+	s.clause.Set(clause.LIMIT, num)
+	return s
+}
+
+// Where Where
+func (s *Session) Where(desc string, args ...interface{}) *Session {
+	var vars []interface{}
+	s.clause.Set(clause.WHERE, append(append(vars, desc), args...)...)
+	return s
+}
+
+// OrderBy adds order by condition to clause
+func (s *Session) OrderBy(desc string) *Session {
+	s.clause.Set(clause.ORDER, desc)
+	return s
+}
+
+// First get first
+func (s *Session) First(value interface{}) error {
+	dest := reflect.Indirect(reflect.ValueOf(value))
+	destSlice := reflect.New(reflect.SliceOf(dest.Type())).Elem()
+	err := s.Limit(1).Find(destSlice.Addr().Interface())
+	if err != nil {
+		return err
+	}
+	if destSlice.Len() == 0 {
+		return errors.New("NOT FOUND")
+	}
+	dest.Set(destSlice.Index(0))
+	return nil
 }
